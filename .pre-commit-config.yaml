@@ -113,8 +113,9 @@ repos:
         alias: mypy-py310
         name: MyPy, for Python 3.10
         additional_dependencies:
+          - ansible-pylibssh
           - pytest
-          - types-PyYAML
+          - xmltodict
         args:
           - --python-version=3.10
         pass_filenames: false

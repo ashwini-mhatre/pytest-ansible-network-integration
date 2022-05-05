@@ -1,8 +1,8 @@
 # pytest-ansible-network-integration
 
-An experimental pytest plugin designed to run ansible network integration tests against an a ppliance defined in an CML lab topology.
+An experimental pytest plugin designed to run ansible network integration tests against an appliance defined in an CML lab topology.
 
-Required environment variables:
+## Required environment variables:
 
 - ANSIBLE_NETWORK_OS
 - CML_SSH_PASSWORD
@@ -12,12 +12,12 @@ Required environment variables:
 - VIRL_PASSWORD
 - VIRL_USERNAME
 
-Required pytest command line parameters:
+## Required pytest command line parameters:
 
 - --integration-tests-path
 - ---cml-lab
 
-Sample pyproject.toml:
+## Sample pyproject.toml:
 
 ```
 [tool.pytest.ini_options]
