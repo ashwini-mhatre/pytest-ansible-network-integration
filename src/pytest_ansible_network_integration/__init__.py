@@ -247,7 +247,7 @@ def ansible_project(
         json.dump(inventory, fh)
     playbook_contents = playbook(str(integration_test_path))
     playbook_path = tmp_path / "site.json"
-    with playbook_path.open(mode="w", encoding="utf-9") as fh:
+    with playbook_path.open(mode="w", encoding="utf-8") as fh:
         json.dump(playbook_contents, fh)
     logger.info("Inventory path: %s", inventory_path)
     logger.info("Playbook path: %s", playbook_path)
