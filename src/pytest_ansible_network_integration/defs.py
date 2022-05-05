@@ -5,19 +5,22 @@ import re
 import subprocess
 import time
 
-from dataclasses import asdict
 from dataclasses import dataclass
-from dataclasses import field
 from pathlib import Path
+from typing import Any
 from typing import Dict
 from typing import List
-from uuid import uuid4
+from typing import Tuple
 
 import xmltodict
 
+# pylint: disable=no-name-in-module
 from pylibsshext.errors import LibsshSessionException
+from pylibsshext.session import Channel
 from pylibsshext.session import Session
 
+
+# pylint: enable=no-name-in-module
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +37,7 @@ class AnsibleProject:
 class SshWrapper:
     """Wrapper for pylibssh."""
 
-    def __init__(self, host, user, password, port=22):
+    def __init__(self, host: str, user: str, password: str, port: int = 22):
         """Initialize the wrapper.
 
         :param host: The host
@@ -43,19 +46,19 @@ class SshWrapper:
         :param port: The port
         """
         self.host = host
-        self.user = user
         self.password = password
         self.port = port
-
         self.session = Session()
+        self.ssh_channel: Channel
+        self.user = user
 
-    def connect(self):
+    def connect(self) -> None:
         """Connect to the host.
 
         :raises LibsshSessionException: If the connection fails
         """
         try:
-            logger.debug("Connecting to {}".format(self.host))
+            logger.debug("Connecting to %s", self.host)
             self.session.connect(
                 host=self.host,
                 port=self.port,
@@ -64,16 +67,16 @@ class SshWrapper:
                 host_key_checking=False,
                 look_for_keys=False,
             )
-        except LibsshSessionException as e:
-            raise e
+        except LibsshSessionException as exc:
+            raise exc
         self.ssh_channel = self.session.new_channel()
 
-    def execute(self, command):
+    def execute(self, command: str) -> Tuple[str, str]:
         """Execute the command.
 
         :param command: The command
-        :return: The result
         :raises LibsshSessionException: If the channel fails
+        :return: The result
         """
         if not self.session.is_connected:
             self.close()
@@ -83,10 +86,10 @@ class SshWrapper:
             stdout = result.stdout.decode()
             stderr = result.stderr.decode()
             return stdout, stderr
-        except LibsshSessionException as e:
-            raise e
+        except LibsshSessionException as exc:
+            raise exc
 
-    def close(self):
+    def close(self) -> None:
         """Close the channel."""
         self.ssh_channel.close()
 
@@ -94,7 +97,7 @@ class SshWrapper:
 class CmlWrapper:
     """Wrapper for cml."""
 
-    def __init__(self, host, username, password):
+    def __init__(self, host: str, username: str, password: str) -> None:
         """Initialize the wrapper.
 
         :param host: The host
@@ -110,60 +113,61 @@ class CmlWrapper:
             "CML_VERIFY_CERT": "False",
         }
 
-    def up(self, file: str):
+    def bring_up(self, file: str) -> None:
         """Bring the lab up.
 
         :param file: The file
+        :raises Exception: If the lab fails to start
         """
-        logger.info("Bringing up lab '{}' on '{}'".format(file, self._host))
+        logger.info("Bringing up lab '%s' on '%s'", file, self._host)
         # Using --provision was not reliable
         stdout, stderr = self._run(f"up -f {file}")
-        logger.debug("CML up stdout: '{}'".format(stdout))
+        logger.debug("CML up stdout: '%s'", stdout)
         # Starting lab xxx (ID: 9fde5f)\n
         current_lab_match = re.match(r".*ID: (?P<id>\S+)\)\n", stdout, re.DOTALL)
         if not current_lab_match:
-            raise RuntimeError("Could not get lab ID: {} {}".format(stdout, stderr))
+            raise Exception(f"Could not get lab ID: {stdout} {stderr}")
         self.current_lab_id = current_lab_match.groupdict()["id"]
-        logger.info("Started lab id '{}'".format(self.current_lab_id))
+        logger.info("Started lab id '%s'", self.current_lab_id)
 
-    def rm(self):
+    def remove(self) -> None:
         """Remove the lab."""
-        logger.info("Deleting lab '{}' on '{}'".format(self.current_lab_id, self._host))
-        stdout, stderr = self._run(f"use --id {self.current_lab_id}")
-        logger.debug("CML use stdout: '{}'".format(stdout))
-        stdout, stderr = self._run("rm --force --no-confirm")
-        logger.debug("CML rm stdout: '{}'".format(stdout))
+        logger.info("Deleting lab '%s' on '%s'", self.current_lab_id, self._host)
+        stdout, _stderr = self._run(f"use --id {self.current_lab_id}")
+        logger.debug("CML use stdout: '%s'", stdout)
+        stdout, _stderr = self._run("rm --force --no-confirm")
+        logger.debug("CML rm stdout: '%s'", stdout)
 
-    def _run(self, command):
+    def _run(self, command: str) -> Tuple[str, str]:
         """Run the command.
 
         :param command: The command
         :return: The result, stdout and stderr
         """
         cml_command = f"cml {command}"
-        logger.info("Running command '{}' on '{}'".format(cml_command, self._host))
+        logger.info("Running command '%s' on '%s'", cml_command, self._host)
         env = os.environ.copy()
         if "VIRTUAL_ENV" in os.environ:
             env["PATH"] = os.path.join(os.environ["VIRTUAL_ENV"], "bin") + os.pathsep + env["PATH"]
 
         env.update(self._auth_env)
 
-        logger.debug("Running command '{}' with environment '{}'".format(cml_command, env))
-        process = subprocess.Popen(
+        logger.debug("Running command '%s' with environment '%s'", cml_command, env)
+        with subprocess.Popen(
             cml_command,
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env,
-        )
-        stdout, stderr = process.communicate()
+        ) as process:
+            stdout, stderr = process.communicate()
         return stdout.decode(), stderr.decode()
 
 
 class VirshWrapper:
     """Wrapper for virsh."""
 
-    def __init__(self, host, user, password, port):
+    def __init__(self, host: str, user: str, password: str, port: int) -> None:
         """Initialize the wrapper.
 
         :param host: The host
@@ -174,34 +178,36 @@ class VirshWrapper:
         self.ssh = SshWrapper(host=host, user=user, password=password, port=port)
         self.ssh.connect()
 
-    def get_dhcp_lease(self, current_lab_id):
+    def get_dhcp_lease(self, current_lab_id: str) -> str:
         """Get the dhcp lease.
 
         :param current_lab_id: The current lab id
         :raises Exception: If the dhcp lease cannot be found
         :return: The ip address
         """
-        iter = 0
-        current_lab = {}
+        attempt = 0
+        current_lab: Dict[str, Any] = {}
 
         logger.info("Getting current lab from virsh")
         while not current_lab:
-            logger.info("Attempt {}".format(iter))
-            stdout, stderr = self.ssh.execute("sudo virsh list --all")
+            logger.info("Attempt %s", attempt)
+            stdout, _stderr = self.ssh.execute("sudo virsh list --all")
 
-            virsh_ids = [re.match(r"^\s(?P<id>\d+)", line) for line in stdout.splitlines()]
-            virsh_ids = [virsh_id.groupdict()["id"] for virsh_id in virsh_ids if virsh_id]
+            virsh_matches = [re.match(r"^\s(?P<id>\d+)", line) for line in stdout.splitlines()]
+            virsh_ids = [
+                virsh_match.groupdict()["id"] for virsh_match in virsh_matches if virsh_match
+            ]
 
             for virsh_id in virsh_ids:
-                stdout, stderr = self.ssh.execute(f"sudo virsh dumpxml {virsh_id}")
+                stdout, _stderr = self.ssh.execute(f"sudo virsh dumpxml {virsh_id}")
                 if current_lab_id in stdout:
-                    logger.debug("Found lab {} in virsh dumpxml: {}".format(current_lab_id, stdout))
+                    logger.debug("Found lab %s in virsh dumpxml: %s", current_lab_id, stdout)
                     current_lab = xmltodict.parse(stdout)
                     break
             if current_lab:
                 break
-            iter += 1
-            if iter == 10:
+            attempt += 1
+            if attempt == 10:
                 raise Exception("Could not find current lab")
             time.sleep(5)
 
@@ -209,14 +215,14 @@ class VirshWrapper:
             interface["mac"]["@address"]
             for interface in current_lab["domain"]["devices"]["interface"]
         ]
-        logger.info("Found macs: {}".format(macs))
+        logger.info("Found macs: %s", macs)
 
-        logger.info("Getting a DHCP lease for any of {}".format(macs))
-        ips = []
-        iter = 0
+        logger.info("Getting a DHCP lease for any of %s", macs)
+        ips: List[str] = []
+        attempt = 0
         while not ips:
-            logger.info("Attempt {}".format(iter))
-            stdout, stderr = self.ssh.execute("sudo virsh net-dhcp-leases default")
+            logger.info("Attempt %s", attempt)
+            stdout, _stderr = self.ssh.execute("sudo virsh net-dhcp-leases default")
             leases = {
                 p[2]: p[4].split("/")[0]
                 for p in [line.split() for line in stdout.splitlines()]
@@ -224,18 +230,18 @@ class VirshWrapper:
             }
 
             ips = [leases[mac] for mac in macs if mac in leases]
-            iter += 1
-            if iter == 30:
+            attempt += 1
+            if attempt == 30:
                 raise Exception("Could not find IPs")
             time.sleep(10)
 
-        logger.debug("Found IPs: {}".format(ips))
+        logger.debug("Found IPs: %s", ips)
 
         if len(ips) > 1:
             raise Exception("Found more than one IP")
 
         return ips[0]
 
-    def close(self):
+    def close(self) -> None:
         """Close the connection."""
         self.ssh.close()

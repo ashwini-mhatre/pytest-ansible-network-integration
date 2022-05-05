@@ -126,6 +126,7 @@ repos:
         args:
           - src/
         additional_dependencies:
-          - ansible-core
+          - ansible-pylibssh
           - pytest
+          - xmltodict
         pass_filenames: false
