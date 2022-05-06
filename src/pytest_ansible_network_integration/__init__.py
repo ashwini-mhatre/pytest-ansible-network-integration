@@ -347,15 +347,15 @@ def github_log(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     :yields: To the test
     """
     if not os.environ.get("GITHUB_ACTIONS"):
-        return
+        yield
+    else:
+        name = request.node.name
 
-    name = request.node.name
+        _github_action_log(f"::group::Run integration test: '{name}'")
+        yield
 
-    _github_action_log(f"::group::Run integration test: '{name}'")
-    yield
+        if hasattr(request.node, "rep_call"):
+            if request.node.rep_setup.passed and request.node.rep_call.failed:
+                _github_action_log(f"::error title=Integration test failure::{name}")
 
-    if hasattr(request.node, "rep_call"):
-        if request.node.rep_setup.passed and request.node.rep_call.failed:
-            _github_action_log(f"::error title=Integration test failure::{name}")
-
-    _github_action_log("::endgroup::")
+        _github_action_log("::endgroup::")
