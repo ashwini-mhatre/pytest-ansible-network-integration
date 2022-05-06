@@ -1,10 +1,8 @@
 # cspell:ignore nodeid
 """Common fixtures for tests."""
-import argparse
 import json
 import logging
 import os
-import re
 import time
 
 from pathlib import Path
