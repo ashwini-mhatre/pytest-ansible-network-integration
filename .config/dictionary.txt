@@ -24,3 +24,4 @@ testpaths
 virl
 virsh
 xmltodict
+pluggy
