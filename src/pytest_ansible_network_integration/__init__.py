@@ -1,6 +1,5 @@
 # cspell:ignore nodeid
 """Common fixtures for tests."""
-import argparse
 import json
 import logging
 import os
@@ -8,11 +7,14 @@ import time
 
 from pathlib import Path
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import Generator
 from typing import List
 
 import pytest
+
+from pluggy._result import _Result as pluggy_result
 
 from .defs import AnsibleProject
 from .defs import CmlWrapper
@@ -185,6 +187,24 @@ def required_environment_variables() -> Dict[str, str]:
     return variables  # type: ignore[return-value]
 
 
+def _github_action_log(message: str) -> None:
+    """Log a message to GitHub Actions.
+
+    :param message: The message
+    """
+    if os.environ.get("GITHUB_ACTIONS"):
+        print(f"\n{message}", flush=True)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def github_action_log() -> Callable[[str], None]:
+    """Log a message to GitHub Actions.
+
+    :returns: The log function
+    """
+    return _github_action_log
+
+
 @pytest.fixture(scope="session", name="appliance_dhcp_address")
 def _appliance_dhcp_address(env_vars: Dict[str, str]) -> Generator[str, None, None]:
     """Build the lab and collect the appliance DHCP address.
@@ -193,45 +213,57 @@ def _appliance_dhcp_address(env_vars: Dict[str, str]) -> Generator[str, None, No
     :raises Exception: Missing environment variables, lab, or appliance
     :yields: The appliance DHCP address
     """
+    _github_action_log("::group::Starting lab provisioning")
+
     logger.info("Starting lab provisioning")
 
-    if not OPTIONS:
-        raise Exception("Missing CML lab")
-    lab_file = OPTIONS.cml_lab
-    if not os.path.exists(lab_file):
-        raise Exception(f"Missing lab file '{lab_file}'")
-
-    start = time.time()
-    cml = CmlWrapper(
-        host=env_vars["cml_host"],
-        username=env_vars["cml_ui_user"],
-        password=env_vars["cml_ui_password"],
-    )
-    cml.bring_up(file=lab_file)
-    lab_id = cml.current_lab_id
-
-    virsh = VirshWrapper(
-        host=env_vars["cml_host"],
-        user=env_vars["cml_ssh_user"],
-        password=env_vars["cml_ssh_password"],
-        port=int(env_vars["cml_ssh_port"]),
-    )
-
     try:
-        ip_address = virsh.get_dhcp_lease(lab_id)
-    except Exception as exc:
-        virsh.close()
-        cml.remove()
-        raise Exception("Failed to get DHCP lease for the appliance") from exc
 
-    end = time.time()
-    logger.info("Elapsed time to provision %s seconds", end - start)
+        if not OPTIONS:
+            raise Exception("Missing CML lab")
+        lab_file = OPTIONS.cml_lab
+        if not os.path.exists(lab_file):
+            raise Exception(f"Missing lab file '{lab_file}'")
+
+        start = time.time()
+        cml = CmlWrapper(
+            host=env_vars["cml_host"],
+            username=env_vars["cml_ui_user"],
+            password=env_vars["cml_ui_password"],
+        )
+        cml.bring_up(file=lab_file)
+        lab_id = cml.current_lab_id
+
+        virsh = VirshWrapper(
+            host=env_vars["cml_host"],
+            user=env_vars["cml_ssh_user"],
+            password=env_vars["cml_ssh_password"],
+            port=int(env_vars["cml_ssh_port"]),
+        )
+
+        try:
+            ip_address = virsh.get_dhcp_lease(lab_id)
+        except Exception as exc:
+            virsh.close()
+            cml.remove()
+            raise Exception("Failed to get DHCP lease for the appliance") from exc
+
+        end = time.time()
+        logger.info("Elapsed time to provision %s seconds", end - start)
+
+    except Exception as exc:
+        logger.error("Failed to provision lab")
+        _github_action_log("::endgroup::")
+        raise Exception("Failed to provision lab") from exc
 
     virsh.close()
+    _github_action_log("::endgroup::")
 
     yield ip_address
 
+    _github_action_log("::group::Removing lab")
     cml.remove()
+    _github_action_log("::endgroup::")
 
 
 @pytest.fixture
@@ -293,3 +325,45 @@ def environment() -> Dict[str, Any]:
     if "VIRTUAL_ENV" in os.environ:
         env["PATH"] = os.path.join(os.environ["VIRTUAL_ENV"], "bin") + os.pathsep + env["PATH"]
     return env
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)  # type: ignore[misc]
+def pytest_runtest_makereport(
+    item: pytest.Item, *_args: Any, **_kwargs: Any
+) -> Generator[None, pluggy_result, None]:
+    """Add additional information to the test item.
+
+    :param item: The test item
+    :param _args: The positional arguments
+    :param _kwargs: The keyword arguments
+    :yields: To all other hooks
+    """
+    # execute all other hooks to obtain the report object
+    outcome = yield
+    rep = outcome.get_result()
+
+    # set a report attribute for each phase of a call, which can
+    # be "setup", "call", "teardown"
+
+    setattr(item, "rep_" + rep.when, rep)
+
+
+@pytest.fixture(autouse=True)
+def github_log(request: pytest.FixtureRequest) -> Generator[None, None, None]:
+    """Log a message to GitHub Actions.
+
+    :param request: The request
+    :yields: To the test
+    """
+    if not os.environ.get("GITHUB_ACTIONS"):
+        return
+
+    name = request.node.name
+
+    _github_action_log(f"::group::Run integration test: '{name}'")
+    yield
+
+    if request.node.rep_setup.passed and request.node.rep_call.failed:
+        _github_action_log(f"::error title=Integration test failure::{name}")
+
+    _github_action_log("::endgroup::")
