@@ -196,15 +196,6 @@ def _github_action_log(message: str) -> None:
         print(f"\n{message}", flush=True)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def github_action_log() -> Callable[[str], None]:
-    """Log a message to GitHub Actions.
-
-    :returns: The log function
-    """
-    return _github_action_log
-
-
 @pytest.fixture(scope="session", name="appliance_dhcp_address")
 def _appliance_dhcp_address(env_vars: Dict[str, str]) -> Generator[str, None, None]:
     """Build the lab and collect the appliance DHCP address.
@@ -363,7 +354,8 @@ def github_log(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     _github_action_log(f"::group::Run integration test: '{name}'")
     yield
 
-    if request.node.rep_setup.passed and request.node.rep_call.failed:
-        _github_action_log(f"::error title=Integration test failure::{name}")
+    if hasattr(request.node, "rep_call"):
+        if request.node.rep_setup.passed and request.node.rep_call.failed:
+            _github_action_log(f"::error title=Integration test failure::{name}")
 
     _github_action_log("::endgroup::")
