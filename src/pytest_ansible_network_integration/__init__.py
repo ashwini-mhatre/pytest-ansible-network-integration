@@ -278,8 +278,8 @@ def ansible_project(
         inventory=inventory_path,
         directory=tmp_path,
         role=integration_test_path.name,
-        log_file=Path(f"~/test_logs/{integration_test_path.name}.log").resolve(),
-        playbook_artifact=Path(f"~/test_logs/{integration_test_path.name}.json").resolve(),
+        log_file=Path.home() / "test_logs" / "{integration_test_path.name}.log",
+        playbook_artifact=Path.home() / "test_logs" / "{integration_test_path.name}.json",
     )
 
 
