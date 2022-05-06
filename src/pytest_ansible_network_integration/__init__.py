@@ -63,6 +63,11 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         required=True,
         help="The CML lab to use",
     )
+    parser.addoption(
+        "--role-include",
+        action="store",
+        help="The positive search substring to filter the roles",
+    )
 
 
 OPTIONS = None
@@ -81,12 +86,28 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     """Generate tests.
 
     :param metafunc: The pytest metafunc object
+    :raises Exception: If the options have not been set
     """
     if "integration_test_path" in metafunc.fixturenames:
-        rootdir = metafunc.config.getoption("integration_tests_path")
+        if not OPTIONS:
+            raise Exception("pytest_configure not called")
+        rootdir = Path(OPTIONS.integration_tests_path)
         roles = [path for path in Path(rootdir).iterdir() if path.is_dir()]
-        role_names = [role.name for role in roles]
-        metafunc.parametrize("integration_test_path", roles, ids=role_names)
+        test_ids = [role.name for role in roles]
+
+        tests = []
+        for role in roles:
+            if OPTIONS.role_include and OPTIONS.role_include not in role.name:
+                tests.append(
+                    pytest.param(
+                        role,
+                        marks=pytest.mark.skipif(True, reason="Role not included by filter"),
+                    )
+                )
+            else:
+                tests.append(pytest.param(role))
+
+        metafunc.parametrize("integration_test_path", tests, ids=test_ids)
 
 
 def _inventory(
@@ -251,7 +272,15 @@ def ansible_project(
         json.dump(playbook_contents, fh)
     logger.info("Inventory path: %s", inventory_path)
     logger.info("Playbook path: %s", playbook_path)
-    return AnsibleProject(playbook=playbook_path, inventory=inventory_path, directory=tmp_path)
+
+    return AnsibleProject(
+        playbook=playbook_path,
+        inventory=inventory_path,
+        directory=tmp_path,
+        role=integration_test_path.name,
+        log_file=Path(f"~/test_logs/{integration_test_path.name}.log").resolve(),
+        playbook_artifact=Path(f"~/test_logs/{integration_test_path.name}.json").resolve(),
+    )
 
 
 @pytest.fixture
