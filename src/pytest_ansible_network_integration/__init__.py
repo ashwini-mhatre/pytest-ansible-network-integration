@@ -159,7 +159,7 @@ def playbook(role: str) -> List[Dict[str, object]]:
     :param role: The role's path
     :returns: The playbook
     """
-    task = {"name": f"Run role {role}", "include_role": {"name": role}}
+    task = {"name": f"Run role {role}", "import_role": {"name": role}}
     play = {"hosts": "all", "gather_facts": False, "tasks": [task]}
     playbook_obj = [play]
     return playbook_obj
