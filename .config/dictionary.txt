@@ -3,6 +3,7 @@ addopts
 cliargs
 dataclass
 dumpxml
+filterwarnings
 fixturenames
 fqcn
 getppid
@@ -18,6 +19,7 @@ popen
 pylibssh
 pylibsshext
 rootdir
+skipif
 testpaths
 virl
 virsh

@@ -29,9 +29,12 @@ logger = logging.getLogger(__name__)
 class AnsibleProject:
     """Ansible project."""
 
-    playbook: Path
-    inventory: Path
     directory: Path
+    inventory: Path
+    log_file: Path
+    playbook_artifact: Path
+    playbook: Path
+    role: str
 
 
 class SshWrapper:
