@@ -196,6 +196,16 @@ def _github_action_log(message: str) -> None:
         print(f"\n{message}", flush=True)
 
 
+def _print(message: str) -> None:
+    """Print a message and flush.
+
+    This ensures the message doesn't get buffered and mixed in the test stdout
+
+    :param message: The message
+    """
+    print(f"\n{message}", flush=True)
+
+
 @pytest.fixture(scope="session", name="appliance_dhcp_address")
 def _appliance_dhcp_address(env_vars: Dict[str, str]) -> Generator[str, None, None]:
     """Build the lab and collect the appliance DHCP address.
@@ -206,7 +216,7 @@ def _appliance_dhcp_address(env_vars: Dict[str, str]) -> Generator[str, None, No
     """
     _github_action_log("::group::Starting lab provisioning")
 
-    logger.info("Starting lab provisioning")
+    _print("Starting lab provisioning")
 
     try:
 
@@ -240,7 +250,7 @@ def _appliance_dhcp_address(env_vars: Dict[str, str]) -> Generator[str, None, No
             raise Exception("Failed to get DHCP lease for the appliance") from exc
 
         end = time.time()
-        logger.info("Elapsed time to provision %s seconds", end - start)
+        _print(f"Elapsed time to provision {end - start} seconds")
 
     except Exception as exc:
         logger.error("Failed to provision lab")
@@ -293,8 +303,8 @@ def ansible_project(
     playbook_path = tmp_path / "site.json"
     with playbook_path.open(mode="w", encoding="utf-8") as fh:
         json.dump(playbook_contents, fh)
-    logger.info("Inventory path: %s", inventory_path)
-    logger.info("Playbook path: %s", playbook_path)
+    _print(f"Inventory path: {inventory_path}")
+    _print(f"Playbook path: {playbook_path}")
 
     return AnsibleProject(
         playbook=playbook_path,
