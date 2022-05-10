@@ -96,7 +96,6 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         rootdir = Path(OPTIONS.integration_tests_path)
         roles = [path for path in Path(rootdir).iterdir() if path.is_dir()]
         test_ids = [role.name for role in roles]
-
         tests = []
         for role in roles:
             if OPTIONS.role_include and OPTIONS.role_include not in role.name:
@@ -193,13 +192,13 @@ def _github_action_log(message: str) -> None:
     :param message: The message
     """
     if os.environ.get("GITHUB_ACTIONS"):
-        print(f"\n{message}", flush=True)
+        _print(message)
 
 
 def _print(message: str) -> None:
     """Print a message and flush.
 
-    This ensures the message doesn't get buffered and mixed in the test stdout
+    This ensures the message doesn't get buffered and mixed in the test stdout.
 
     :param message: The message
     """
@@ -312,7 +311,10 @@ def ansible_project(
         directory=tmp_path,
         role=integration_test_path.name,
         log_file=Path.home() / "test_logs" / f"{integration_test_path.name}.log",
-        playbook_artifact=Path.home() / "test_logs" / f"{integration_test_path.name}.json",
+        playbook_artifact=Path.home()
+        / "test_logs"
+        / "{playbook_status}"
+        / f"{integration_test_path.name}.json",
     )
 
 
