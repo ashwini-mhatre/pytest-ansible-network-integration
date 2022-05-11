@@ -54,16 +54,16 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     :param parser: The pytest argument parser
     """
     parser.addoption(
-        "--integration-tests-path",
-        action="store",
-        required=True,
-        help="The integration test path",
-    )
-    parser.addoption(
         "--cml-lab",
         action="store",
         required=True,
         help="The CML lab to use",
+    )
+    parser.addoption(
+        "--integration-tests-path",
+        action="store",
+        required=True,
+        help="The integration test path",
     )
     parser.addoption(
         "--role-includes",

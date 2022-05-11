@@ -115,6 +115,7 @@ class CmlWrapper:
             "VIRL_PASSWORD": password,
             "CML_VERIFY_CERT": "False",
         }
+        self._lab_existed: bool = False
 
     def bring_up(self, file: str) -> None:
         """Bring the lab up.
@@ -129,6 +130,7 @@ class CmlWrapper:
             if current_lab_match:
                 self.current_lab_id = current_lab_match.groupdict()["id"]
                 logger.info("Using existing lab id '%s'", self.current_lab_id)
+                self._lab_existed = True
                 return
         logger.info("No lab currently provisioned")
         logger.info("Bringing up lab '%s' on '%s'", file, self._host)
@@ -144,6 +146,10 @@ class CmlWrapper:
 
     def remove(self) -> None:
         """Remove the lab."""
+        if self._lab_existed:
+            logger.info("Please remember to remove lab id '%s'", self.current_lab_id)
+            return
+
         logger.info("Deleting lab '%s' on '%s'", self.current_lab_id, self._host)
         stdout, _stderr = self._run(f"use --id {self.current_lab_id}")
         logger.debug("CML use stdout: '%s'", stdout)
