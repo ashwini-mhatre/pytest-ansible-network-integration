@@ -66,9 +66,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="The CML lab to use",
     )
     parser.addoption(
-        "--role-include",
+        "--role-includes",
         action="store",
-        help="The positive search substring to filter the roles",
+        help="The comma delimited positive search substrings to filter the roles",
+    )
+    parser.addoption(
+        "--role-excludes",
+        action="store",
+        help="The comma delimited negative search substring to filter the roles",
     )
 
 
@@ -95,20 +100,27 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             raise Exception("pytest_configure not called")
         rootdir = Path(OPTIONS.integration_tests_path)
         roles = [path for path in Path(rootdir).iterdir() if path.is_dir()]
-        test_ids = [role.name for role in roles]
+        # test_ids = [role.name for role in roles]
         tests = []
         for role in roles:
-            if OPTIONS.role_include and OPTIONS.role_include not in role.name:
-                tests.append(
-                    pytest.param(
-                        role,
-                        marks=pytest.mark.skipif(True, reason="Role not included by filter"),
-                    )
-                )
+            reason = ""
+            if OPTIONS.role_includes:
+                includes = [name.strip() for name in OPTIONS.role_includes.split(",")]
+                for include in includes:
+                    if include not in role.name:
+                        reason = "Role not included by filter"
+            if OPTIONS.role_excludes and not reason:
+                excludes = [name.strip() for name in OPTIONS.role_excludes.split(",")]
+                for exclude in excludes:
+                    if exclude in role.name:
+                        reason = "Role excluded by filter"
+            if reason:
+                param = pytest.param(role, id=role.name, marks=pytest.mark.skip(reason=reason))
             else:
-                tests.append(pytest.param(role))
+                param = pytest.param(role, id=role.name)
+            tests.append(param)
 
-        metafunc.parametrize("integration_test_path", tests, ids=test_ids)
+        metafunc.parametrize("integration_test_path", tests)
 
 
 def _inventory(
