@@ -147,7 +147,7 @@ class CmlWrapper:
     def remove(self) -> None:
         """Remove the lab."""
         if self._lab_existed:
-            logger.info("Please remember to removing lab id '%s'", self.current_lab_id)
+            logger.info("Please remember to remove lab id '%s'", self.current_lab_id)
             return
 
         logger.info("Deleting lab '%s' on '%s'", self.current_lab_id, self._host)
