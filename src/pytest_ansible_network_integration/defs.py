@@ -122,6 +122,15 @@ class CmlWrapper:
         :param file: The file
         :raises Exception: If the lab fails to start
         """
+        logger.info("Check if lab is already provisioned")
+        stdout, _stderr = self._run("id")
+        if stdout:
+            current_lab_match = re.match(r".*ID: (?P<id>\S+)\)\n", stdout, re.DOTALL)
+            if current_lab_match:
+                self.current_lab_id = current_lab_match.groupdict()["id"]
+                logger.info("Using existing lab id '%s'", self.current_lab_id)
+                return
+        logger.info("No lab currently provisioned")
         logger.info("Bringing up lab '%s' on '%s'", file, self._host)
         # Using --provision was not reliable
         stdout, stderr = self._run(f"up -f {file}")
