@@ -144,6 +144,15 @@ class CmlWrapper:
         self.current_lab_id = current_lab_match.groupdict()["id"]
         logger.info("Started lab id '%s'", self.current_lab_id)
 
+        if not os.environ.get("GITHUB_ACTIONS"):
+            return
+        # In the case of GH actions store the labs in an env var for clean up if the job is
+        # cancelled, this is referenced in the GH integration workflow
+        if os.environ.get("CML_LABS"):
+            os.environ["CML_LABS"] += f",{self.current_lab_id}"
+        else:
+            os.environ["CML_LABS"] = self.current_lab_id
+
     def remove(self) -> None:
         """Remove the lab."""
         if self._lab_existed:
