@@ -7,7 +7,6 @@ import time
 
 from dataclasses import dataclass
 from pathlib import Path
-from posix import environ
 from typing import Any
 from typing import Dict
 from typing import List
