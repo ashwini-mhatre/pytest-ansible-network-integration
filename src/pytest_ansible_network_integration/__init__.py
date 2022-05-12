@@ -214,7 +214,7 @@ def _print(message: str) -> None:
 
     :param message: The message
     """
-    print(f"\n{message}", flush=True)
+    print(f"{message}", flush=True)
 
 
 @pytest.fixture(scope="session", name="appliance_dhcp_address")
@@ -375,7 +375,7 @@ def github_log(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     else:
         name = request.node.name
 
-        _github_action_log(f"::group::Run integration test: '{name}'")
+        _github_action_log(f"::group::Integration test stdout: '{name}'")
         yield
 
         if hasattr(request.node, "rep_call"):
