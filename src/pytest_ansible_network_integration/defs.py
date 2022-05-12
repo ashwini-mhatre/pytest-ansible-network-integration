@@ -148,16 +148,21 @@ class CmlWrapper:
             return
         # In the case of GH actions store the labs in an env var for clean up if the job is
         # cancelled, this is referenced in the GH integration workflow
-        if os.environ.get("CML_LABS"):
-            os.environ["CML_LABS"] += f",{self.current_lab_id}"
-        else:
-            os.environ["CML_LABS"] = self.current_lab_id
 
         env_file = os.environ.get("GITHUB_ENV", "")
         if not env_file:
             return
-        with open(env_file, "a", encoding="utf-8") as fh:
-            fh.write(f"CML_LABS={os.environ['CML_LABS']}")
+        with open(env_file, "r", encoding="utf-8") as fh:
+            data = fh.readlines()
+
+        line_id = [idx for idx, line in enumerate(data) if line.startswith("CML_LABS=")]
+        if not line_id:
+            data.append(f"CML_LABS={self.current_lab_id}")
+        else:
+            data[line_id[0]] += f",{self.current_lab_id}"
+
+        with open(env_file, "w", encoding="utf-8") as fh:
+            fh.writelines(data)
 
     def remove(self) -> None:
         """Remove the lab."""
