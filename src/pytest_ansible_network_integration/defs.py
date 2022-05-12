@@ -148,10 +148,6 @@ class CmlWrapper:
             return
         # In the case of GH actions store the labs in an env var for clean up if the job is
         # cancelled, this is referenced in the GH integration workflow
-        # if os.environ.get("CML_LABS"):
-        #     os.environ["CML_LABS"] += f",{self.current_lab_id}"
-        # else:
-        #     os.environ["CML_LABS"] = self.current_lab_id
 
         env_file = os.environ.get("GITHUB_ENV", "")
         if not env_file:
