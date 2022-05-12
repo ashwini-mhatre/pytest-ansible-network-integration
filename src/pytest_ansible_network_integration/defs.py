@@ -153,6 +153,12 @@ class CmlWrapper:
         else:
             os.environ["CML_LABS"] = self.current_lab_id
 
+        env_file = os.environ.get("GITHUB_ENV", "")
+        if not env_file:
+            return
+        with open(env_file, "a", encoding="utf-8") as fh:
+            fh.write(f"CML_LABS={os.environ['CML_LABS']}")
+
     def remove(self) -> None:
         """Remove the lab."""
         if self._lab_existed:
