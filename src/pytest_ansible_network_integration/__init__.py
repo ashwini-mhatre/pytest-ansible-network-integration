@@ -339,6 +339,8 @@ def environment() -> Dict[str, Any]:
     env = os.environ.copy()
     if "VIRTUAL_ENV" in os.environ:
         env["PATH"] = os.path.join(os.environ["VIRTUAL_ENV"], "bin") + os.pathsep + env["PATH"]
+    # Disable warnings about localhost, since these are tests
+    env["ANSIBLE_LOCALHOST_WARNING"] = "False"
     return env
 
 
