@@ -383,8 +383,10 @@ def github_log(request: pytest.FixtureRequest) -> Generator[None, None, None]:
         if hasattr(request.node, "rep_call"):
             if request.node.rep_setup.passed and request.node.rep_call.failed:
                 _github_action_log("::endgroup::")
+                gh_job = os.environ.get("GITHUB_JOB", "Unknown job")
+                title = f"{gh_job}: {name}"
                 msg = f"Integration test failure: '{name}'"
-                _github_action_log(f"::error title={msg}::{msg}")
+                _github_action_log(f"::error title={title}::{msg}")
 
         _github_action_log("::endgroup::")
 
