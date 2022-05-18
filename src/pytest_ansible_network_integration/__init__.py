@@ -397,7 +397,6 @@ def localhost_project(
     :param tmp_path: The temporary path
     :returns: The ansible project
     """
-
     playbook_contents = playbook(hosts="localhost", role=str(integration_test_path))
     playbook_path = tmp_path / "site.json"
     with playbook_path.open(mode="w", encoding="utf-8") as fh:
