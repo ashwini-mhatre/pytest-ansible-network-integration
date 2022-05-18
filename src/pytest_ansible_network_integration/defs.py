@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 class AnsibleProject:
     """Ansible project."""
 
+    collection_doc_cache: Path
     directory: Path
     log_file: Path
     playbook_artifact: Path

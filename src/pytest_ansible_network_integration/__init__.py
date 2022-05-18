@@ -317,15 +317,16 @@ def ansible_project(
     _print(f"Playbook path: {playbook_path}")
 
     return AnsibleProject(
-        playbook=playbook_path,
-        inventory=inventory_path,
+        collection_doc_cache=tmp_path / "collection_doc_cache.db",
         directory=tmp_path,
-        role=integration_test_path.name,
+        inventory=inventory_path,
         log_file=Path.home() / "test_logs" / f"{integration_test_path.name}.log",
+        playbook=playbook_path,
         playbook_artifact=Path.home()
         / "test_logs"
         / "{playbook_status}"
         / f"{integration_test_path.name}.json",
+        role=integration_test_path.name,
     )
 
 
@@ -404,12 +405,13 @@ def localhost_project(
     _print(f"Playbook path: {playbook_path}")
 
     return AnsibleProject(
-        playbook=playbook_path,
+        collection_doc_cache=tmp_path / "collection_doc_cache.db",
         directory=tmp_path,
-        role=integration_test_path.name,
         log_file=Path.home() / "test_logs" / f"{integration_test_path.name}.log",
+        playbook=playbook_path,
         playbook_artifact=Path.home()
         / "test_logs"
         / "{playbook_status}"
         / f"{integration_test_path.name}.json",
+        role=integration_test_path.name,
     )
