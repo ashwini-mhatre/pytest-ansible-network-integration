@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Tuple
 
 import xmltodict
@@ -30,11 +31,11 @@ class AnsibleProject:
     """Ansible project."""
 
     directory: Path
-    inventory: Path
     log_file: Path
     playbook_artifact: Path
     playbook: Path
     role: str
+    inventory: Optional[Path] = None
 
 
 class SshWrapper:

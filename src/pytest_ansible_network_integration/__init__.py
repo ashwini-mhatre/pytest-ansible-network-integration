@@ -56,13 +56,11 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--cml-lab",
         action="store",
-        required=True,
         help="The CML lab to use",
     )
     parser.addoption(
         "--integration-tests-path",
         action="store",
-        required=True,
         help="The integration test path",
     )
     parser.addoption(
@@ -164,14 +162,15 @@ def _inventory(
     return inventory
 
 
-def playbook(role: str) -> List[Dict[str, object]]:
+def playbook(hosts: str, role: str) -> List[Dict[str, object]]:
     """Return the playbook.
 
+    :param hosts: The hosts entry for the playbook
     :param role: The role's path
     :returns: The playbook
     """
     task = {"name": f"Run role {role}", "include_role": {"name": role}}
-    play = {"hosts": "all", "gather_facts": False, "tasks": [task]}
+    play = {"hosts": hosts, "gather_facts": False, "tasks": [task]}
     playbook_obj = [play]
     return playbook_obj
 
@@ -310,7 +309,7 @@ def ansible_project(
     inventory_path = tmp_path / "inventory.json"
     with inventory_path.open(mode="w", encoding="utf-8") as fh:
         json.dump(inventory, fh)
-    playbook_contents = playbook(str(integration_test_path))
+    playbook_contents = playbook(hosts="all", role=str(integration_test_path))
     playbook_path = tmp_path / "site.json"
     with playbook_path.open(mode="w", encoding="utf-8") as fh:
         json.dump(playbook_contents, fh)
@@ -385,3 +384,32 @@ def github_log(request: pytest.FixtureRequest) -> Generator[None, None, None]:
                 _github_action_log(f"::error title={msg}::{msg}")
 
         _github_action_log("::endgroup::")
+
+
+@pytest.fixture
+def localhost_project(
+    integration_test_path: Path,
+    tmp_path: Path,
+) -> AnsibleProject:
+    """Build an ansible project with only implicit localhost.
+
+    :param integration_test_path: The integration test path
+    :param tmp_path: The temporary path
+    :returns: The ansible project
+    """
+    playbook_contents = playbook(hosts="localhost", role=str(integration_test_path))
+    playbook_path = tmp_path / "site.json"
+    with playbook_path.open(mode="w", encoding="utf-8") as fh:
+        json.dump(playbook_contents, fh)
+    _print(f"Playbook path: {playbook_path}")
+
+    return AnsibleProject(
+        playbook=playbook_path,
+        directory=tmp_path,
+        role=integration_test_path.name,
+        log_file=Path.home() / "test_logs" / f"{integration_test_path.name}.log",
+        playbook_artifact=Path.home()
+        / "test_logs"
+        / "{playbook_status}"
+        / f"{integration_test_path.name}.json",
+    )
