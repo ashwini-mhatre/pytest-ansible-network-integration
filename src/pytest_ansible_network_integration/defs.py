@@ -275,7 +275,7 @@ class VirshWrapper:
             ips = [leases[mac] for mac in macs if mac in leases]
             attempt += 1
             if attempt == 50:
-                raise Exception("Could not find IPs")
+                raise PytestNetworkError("Could not find IPs")
             time.sleep(10)
 
         logger.debug("Found IPs: %s", ips)
