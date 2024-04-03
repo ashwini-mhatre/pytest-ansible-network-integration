@@ -1,4 +1,7 @@
 """Common objects."""
+
+from __future__ import annotations
+
 import logging
 import os
 import re
@@ -123,7 +126,7 @@ class CmlWrapper:
         """Bring the lab up.
 
         :param file: The file
-        :raises Exception: If the lab fails to start
+        :raises PytestNetworkError: If the lab fails to start
         """
         logger.info("Check if lab is already provisioned")
         stdout, _stderr = self._run("id")
@@ -142,7 +145,7 @@ class CmlWrapper:
         # Starting lab xxx (ID: 9fde5f)\n
         current_lab_match = re.match(r".*ID: (?P<id>\S+)\)\n", stdout, re.DOTALL)
         if not current_lab_match:
-            raise Exception(f"Could not get lab ID: {stdout} {stderr}")
+            raise PytestNetworkError(f"Could not get lab ID: {stdout} {stderr}")
         self.current_lab_id = current_lab_match.groupdict()["id"]
         logger.info("Started lab id '%s'", self.current_lab_id)
 
@@ -222,7 +225,7 @@ class VirshWrapper:
         """Get the dhcp lease.
 
         :param current_lab_id: The current lab id
-        :raises Exception: If the dhcp lease cannot be found
+        :raises PytestNetworkError: If the dhcp lease cannot be found
         :return: The ip address
         """
         attempt = 0
@@ -248,7 +251,7 @@ class VirshWrapper:
                 break
             attempt += 1
             if attempt == 10:
-                raise Exception("Could not find current lab")
+                raise PytestNetworkError("Could not find current lab")
             time.sleep(5)
 
         macs = [
@@ -278,10 +281,21 @@ class VirshWrapper:
         logger.debug("Found IPs: %s", ips)
 
         if len(ips) > 1:
-            raise Exception("Found more than one IP")
+            raise PytestNetworkError("Found more than one IP")
 
         return ips[0]
 
     def close(self) -> None:
         """Close the connection."""
         self.ssh.close()
+
+
+class PytestNetworkError(Exception):
+    """Class representing exceptions raised from the pytest plugin code."""
+
+    def __init__(self: PytestNetworkError, message: str) -> None:
+        """Instantiate an object of this class.
+
+        :param message: The exception message.
+        """
+        super().__init__(message)

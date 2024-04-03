@@ -1,5 +1,6 @@
 # cspell:ignore nodeid
 """Common fixtures for tests."""
+
 import json
 import logging
 import os
@@ -18,6 +19,7 @@ from pluggy._result import _Result as pluggy_result
 
 from .defs import AnsibleProject
 from .defs import CmlWrapper
+from .defs import PytestNetworkError
 from .defs import VirshWrapper
 
 
@@ -91,11 +93,11 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     """Generate tests.
 
     :param metafunc: The pytest metafunc object
-    :raises Exception: If the options have not been set
+    :raises PytestNetworkError: If the options have not been set
     """
     if "integration_test_path" in metafunc.fixturenames:
         if not OPTIONS:
-            raise Exception("pytest_configure not called")
+            raise PytestNetworkError("pytest_configure not called")
         rootdir = Path(OPTIONS.integration_tests_path)
         roles = [path for path in Path(rootdir).iterdir() if path.is_dir()]
         # test_ids = [role.name for role in roles]
@@ -179,7 +181,7 @@ def playbook(hosts: str, role: str) -> List[Dict[str, object]]:
 def required_environment_variables() -> Dict[str, str]:
     """Return the required environment variables.
 
-    :raises Exception: If the environment variables are not set
+    :raises PytestNetworkError: If the environment variables are not set
     :returns: The required environment variables
     """
     variables = {
@@ -192,7 +194,7 @@ def required_environment_variables() -> Dict[str, str]:
         "network_os": os.environ.get("ANSIBLE_NETWORK_OS"),
     }
     if not all(variables.values()):
-        raise Exception("CML environment variables not set")
+        raise PytestNetworkError("CML environment variables not set")
 
     return variables  # type: ignore[return-value]
 
@@ -221,7 +223,7 @@ def _appliance_dhcp_address(env_vars: Dict[str, str]) -> Generator[str, None, No
     """Build the lab and collect the appliance DHCP address.
 
     :param env_vars: The environment variables
-    :raises Exception: Missing environment variables, lab, or appliance
+    :raises PytestNetworkError: Missing environment variables, lab, or appliance
     :yields: The appliance DHCP address
     """
     _github_action_log("::group::Starting lab provisioning")
@@ -229,12 +231,11 @@ def _appliance_dhcp_address(env_vars: Dict[str, str]) -> Generator[str, None, No
     _print("Starting lab provisioning")
 
     try:
-
         if not OPTIONS:
-            raise Exception("Missing CML lab")
+            raise PytestNetworkError("Missing CML lab")
         lab_file = OPTIONS.cml_lab
         if not os.path.exists(lab_file):
-            raise Exception(f"Missing lab file '{lab_file}'")
+            raise PytestNetworkError(f"Missing lab file '{lab_file}'")
 
         start = time.time()
         cml = CmlWrapper(
@@ -254,18 +255,18 @@ def _appliance_dhcp_address(env_vars: Dict[str, str]) -> Generator[str, None, No
 
         try:
             ip_address = virsh.get_dhcp_lease(lab_id)
-        except Exception as exc:
+        except PytestNetworkError as exc:
             virsh.close()
             cml.remove()
-            raise Exception("Failed to get DHCP lease for the appliance") from exc
+            raise PytestNetworkError("Failed to get DHCP lease for the appliance") from exc
 
         end = time.time()
         _print(f"Elapsed time to provision {end - start} seconds")
 
-    except Exception as exc:
+    except PytestNetworkError as exc:
         logger.error("Failed to provision lab")
         _github_action_log("::endgroup::")
-        raise Exception("Failed to provision lab") from exc
+        raise PytestNetworkError("Failed to provision lab") from exc
 
     virsh.close()
     _github_action_log("::endgroup::")
@@ -344,10 +345,10 @@ def environment() -> Dict[str, Any]:
     return env
 
 
-@pytest.hookimpl(tryfirst=True, hookwrapper=True)  # type: ignore[misc]
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(
     item: pytest.Item, *_args: Any, **_kwargs: Any
-) -> Generator[None, pluggy_result, None]:
+) -> Generator[None, pluggy_result, None]:  # type: ignore[type-arg]
     """Add additional information to the test item.
 
     :param item: The test item
